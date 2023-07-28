@@ -1,0 +1,170 @@
+CODIGO
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+
+public class Culebrita extends JPanel implements ActionListener {
+    private static final int ANCHO_VENTANA = 700; // Ancho de la ventana del juego
+    private static final int ALTO_VENTANA = 700; // Alto de la ventana del juego
+    private static final int TAMANO_CELDA = 20; 
+    private static final int TOTAL_CELDAS = (ANCHO_VENTANA * ALTO_VENTANA) / (TAMANO_CELDA * TAMANO_CELDA); 
+    private static final int DELAY_INICIAL = 100; 
+
+    private final int[] x = new int[TOTAL_CELDAS]; 
+    private final int[] y = new int[TOTAL_CELDAS]; 
+    private int longitudSerpiente; // Longitud serpiente
+    private char direccion; // Dirección actual de la serpiente
+    private int comidaX; // Comida puesta
+    private int comidaY; // Comida nueva
+    private boolean enJuego; // Estado del juego (en juego o terminado)
+    private Timer temporizador; // controlar la velocidad de la serpiente
+
+    public Culebrita() {
+        setPreferredSize(new Dimension(ANCHO_VENTANA, ALTO_VENTANA)); 
+        setBackground(Color.BLACK); //  el color de fondo del panel
+        setFocusable(true); 
+        addKeyListener(new AdaptadorTeclado()); //captura las teclas que undas
+        iniciarJuego(); // Inicializar el juego
+    }
+
+    private void iniciarJuego() {
+        longitudSerpiente = 3; //longitud inicial de la serpiente
+        direccion = 'R'; // Establecer la dirección inicial de la serpiente 
+        enJuego = true; // Establecer el estado del juego como activo
+        colocarComida(); //comida en una posición aleatoria
+        temporizador = new Timer(DELAY_INICIAL, this); // controlar la velocidad de la serpiente
+        temporizador.start(); // Iniciar el temporizador
+    }
+
+    private void colocarComida() {
+        int r = (int) (Math.random() * (ANCHO_VENTANA / TAMANO_CELDA)); //posición aleatoria para la comida 
+        comidaX = r * TAMANO_CELDA; // 
+
+        r = (int) (Math.random() * (ALTO_VENTANA / TAMANO_CELDA)); 
+        comidaY = r * TAMANO_CELDA; 
+    }
+
+    private void dibujar(Graphics g) {
+        if (enJuego) {
+            g.setColor(Color.RED); // Establecer el color de la comida
+            g.fillRect(comidaX, comidaY, TAMANO_CELDA, TAMANO_CELDA); // Dibujar la comida en el panel
+
+            for (int i = 0; i < longitudSerpiente; i++) {
+                if (i == 0) {
+                    g.setColor(Color.WHITE); // Establecer el color de la cabeza de la serpiente
+                } else {
+                    g.setColor(Color.GREEN); // Establecer el color del cuerpo de la serpiente
+                }
+                g.fillRect(x[i], y[i], TAMANO_CELDA, TAMANO_CELDA); 
+            }
+
+            Toolkit.getDefaultToolkit().sync(); 
+        } else {
+            mostrarGameOver(g); // Mostrar el mensaje de "Game Over" en la ventana
+        }
+    }
+
+    private void mostrarGameOver(Graphics g) {
+        String mensaje = "Game Over";
+        Font font = new Font("Helvetica", Font.BOLD, 20);
+        FontMetrics metrics = getFontMetrics(font);
+
+        g.setColor(Color.WHITE); // Establecer el color del texto
+        g.setFont(font); // Establecer la fuente del texto
+        g.drawString(mensaje, (ANCHO_VENTANA - metrics.stringWidth(mensaje)) / 2, ALTO_VENTANA / 2); // Dibujar el texto en el centro de la ventana
+    }
+
+    private void actualizar() {
+        for (int i = longitudSerpiente; i > 0; i--) {
+            x[i] = x[i - 1]; // Mover cada parte del cuerpo de la serpiente a la posición de la parte anterior
+            y[i] = y[i - 1];
+        }
+
+        switch (direccion) {
+            case 'U':
+                y[0] -= TAMANO_CELDA; // Mover hacia arriba 
+                break;
+            case 'D':
+                y[0] += TAMANO_CELDA;
+                break;
+            case 'L':
+                x[0] -= TAMANO_CELDA; // Mover hacia la izquierda 
+                break;
+            case 'R':
+                x[0] += TAMANO_CELDA; // Mover hacia la derecha
+                break;
+        }
+
+        if (x[0] == comidaX && y[0] == comidaY) {
+            longitudSerpiente++; // Incrementar la longitud de la serpiente
+            colocarComida(); // Colocar una nueva comida en una posición aleatoria
+        }
+
+        if (x[0] < 0 || x[0] >= ANCHO_VENTANA || y[0] < 0 || y[0] >= ALTO_VENTANA) {
+            enJuego = false; // El juego termina si la cabeza de la serpiente choca con los límites de la ventana
+        }
+
+        for (int i = 1; i < longitudSerpiente; i++) {
+            if (x[0] == x[i] && y[0] == y[i]) {
+                enJuego = false; // El juego termina si la cabeza de la serpiente choca con su propio cuerpo
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (enJuego) {
+            actualizar(); // Actualizar la posición de la serpiente 
+        }
+
+        repaint(); // Volver a dibujar el panel
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        dibujar(g); // Dibujar el tablero, la serpiente y la comida
+    }
+
+    private class AdaptadorTeclado extends KeyAdapter {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            int key = e.getKeyCode();
+
+            switch (key) {
+                case KeyEvent.VK_UP:
+                    if (direccion != 'D') {
+                        direccion = 'U'; // Cambiar la dirección a arriba si no se está moviendo hacia abajo
+                    }
+                    break;
+                case KeyEvent.VK_DOWN:
+                    if (direccion != 'U') {
+                        direccion = 'D'; // Cambiar la dirección a abajo si no se está moviendo hacia arriba
+                    }
+                    break;
+                case KeyEvent.VK_LEFT:
+                    if (direccion != 'R') {
+                        direccion = 'L'; // Cambiar la dirección a izquierda si no se está moviendo hacia la derecha
+                    }
+                    break;
+                case KeyEvent.VK_RIGHT:
+                    if (direccion != 'L') {
+                        direccion = 'R'; // Cambiar la dirección a derecha si no se está moviendo hacia la izquierda
+                    }
+                    break;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        JFrame ventana = new JFrame("Culebrita"); // Crear la ventana del juego
+        ventana.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Configurar la acción al cerrar la ventana
+        ventana.setResizable(false); // Desactivar la capacidad de redimensionar la ventana
+        ventana.add(new Culebrita()); // Agregar el panel del juego a la ventana
+        ventana.pack(); // Ajustar el tamaño de la ventana según el contenido
+        ventana.setLocationRelativeTo(null); // Centrar la ventana en la pantalla
+        ventana.setVisible(true); // Mostrar la ventana
+    }
+}
